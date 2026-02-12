@@ -7,12 +7,13 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  security-events: write # Required for some security features
 
 jobs:
-  build-and-scan:
-    name: Build and Scan with OSV
+  # Job 1: Build the project to ensure dependencies are resolved
+  build:
+    name: Build Java 8 Project
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,30 +25,46 @@ jobs:
           java-version: '8'
           cache: maven
 
-      - name: Set up Maven (Java 8 compatible)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y maven
-          mvn -version
-
       - name: Build JAR
         run: mvn clean package -DskipTests
 
-      # Run OSV Scanner via reusable workflow
-      - name: Run OSV Scanner
-        id: osv
-        uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.3"
+  # Job 2: Run the OSV Scanner
+  # Note: The OSV Action is better used as a Step than a reusable workflow 
+  # for custom reporting like PR comments.
+  osv-scan:
+    name: OSV Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run OSV-Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@v1.9.0
         with:
           scan-args: |
             --recursive
-            .
-          output: osv-results.json
+            --format json
+            --output osv-results.json
+          fail-on-vulnerabilities: false # Keep going so we can comment on the PR
 
       - name: Generate PR Comment Body
         id: comment-body
         run: |
-          if [ -f osv-results.json ]; then
+          if [ -s osv-results.json ]; then
             echo "### 🔍 OSV Vulnerability Scan Results" > pr-comment.md
-            echo "" >> pr-comment.md
+            echo "Found vulnerabilities in project dependencies:" >> pr-comment.md
             echo "\`\`\`json" >> pr-comment.md
-            cat osv-results.json >> pr-comment.md
+            # Use jq to keep the comment clean if you have it, or just cat
+            cat osv-results.json | head -c 5000 >> pr-comment.md 
+            echo "..." >> pr-comment.md
+            echo "\`\`\`" >> pr-comment.md
+          else
+            echo "### 🔍 OSV Vulnerability Scan Results" > pr-comment.md
+            echo "✅ No vulnerabilities found." >> pr-comment.md
+          fi
+
+      - name: Create or Update PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: osv-scan-report
+          path: pr-comment.md
