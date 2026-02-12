@@ -4,7 +4,7 @@
 XMLComparator is not just *any XML Comparator*, this tool is created with a purpose to enable Siebel CRM Configurations Managers / Siebel Developers / Admins to **Compare two different Siebel Environments** using the Siebel Object XML Export. This provides the capability of identifying the newly added / edited Sibel Product/ Product Promotions / Bundles or any line item. This offering is custom made for the purpose of working with the Siebel products Export.
 
 > This Work have aged for almost 7 Years. I created this tool during my first 6 Months of Work Experience and i moved out of that space. Since i started to collect all the engaging/interesting work i have done. Even-thought i have gained a lot of work experience, i cherish this beginner code and wanted to have it as-is without having any influence from the new qualified me. Thats the reason why the code doesn't have any logger, poor Object handling and a very basic programming paradigm approach.I have just refurbished this code into a Maven Project.
-
+     
 
 # Product Description
 ## Oracle Siebel
