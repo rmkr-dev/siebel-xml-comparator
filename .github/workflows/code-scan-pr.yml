@@ -1,0 +1,53 @@
+name: PR Code Vulnerability Scan
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build-and-scan:
+    name: Build and Scan with OSV
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '8'
+          cache: maven
+
+      - name: Set up Maven (Java 8 compatible)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y maven
+          mvn -version
+
+      - name: Build JAR
+        run: mvn clean package -DskipTests
+
+      # Run OSV Scanner via reusable workflow
+      - name: Run OSV Scanner
+        id: osv
+        uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.3"
+        with:
+          scan-args: |
+            --recursive
+            .
+          output: osv-results.json
+
+      - name: Generate PR Comment Body
+        id: comment-body
+        run: |
+          if [ -f osv-results.json ]; then
+            echo "### 🔍 OSV Vulnerability Scan Results" > pr-comment.md
+            echo "" >> pr-comment.md
+            echo "\`\`\`json" >> pr-comment.md
+            cat osv-results.json >> pr-comment.md
